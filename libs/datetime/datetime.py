@@ -1,6 +1,6 @@
 
-from datetime.dt import _date, _time, _iso2d, _tmod, _o2ymd, _iso2t, _d2iso, _t2iso
-from datetime.timezone import timezone
+from libs.datetime.dt import _date, _time, _iso2d, _tmod, _o2ymd, _iso2t, _d2iso, _t2iso
+from libs.datetime.timezone import timezone
 
 
 class datetime:

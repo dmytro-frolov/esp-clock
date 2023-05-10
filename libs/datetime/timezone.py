@@ -1,4 +1,4 @@
-from datetime.timedelta import timedelta
+from libs.datetime.timedelta import timedelta
 
 
 class tzinfo:

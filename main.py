@@ -3,16 +3,16 @@ import os
 import mip
 import time
 import network
+import ntptime
 import uasyncio
-from machine import Pin, SPI, RTC
 import urequests
 
-import ntptime
+from machine import Pin, SPI, RTC, I2C
 
-# fix it
-from datetime.datetime import datetime
-from datetime.timezone import timezone
-from datetime.timedelta import timedelta
+from libs.datetime import datetime
+from libs.datetime import timezone
+from libs.datetime import timedelta
+from libs import DS3231
 
 
 modules_to_install = []
@@ -135,9 +135,9 @@ def do_connect():
     return wlan.isconnected()
 
 
-# rtc = RTC()
-
 class TimeHandler:
+    offset = 0
+
     def _get_from_worldtimeapi(self):
         try:
             resp = urequests.get("http://worldtimeapi.org/api/ip")
@@ -187,8 +187,25 @@ display = Display()
 #     display.set("0000")
 
 display.set("1337")
+i2c = I2C(sda=Pin(0), scl=Pin(4))
+ds = DS3231(i2c)
 
-uasyncio.run(main(display))
+# scl  d2 4
+# sda  d3 0
+
+year = 2020 # Can be yyyy or yy format
+month = 10
+mday = 3
+hour = 13 # 24 hour format only
+minute = 55
+second = 30 # Optional
+weekday = 6 # Optional
+
+dt = (year, month, mday, hour, minute, second, weekday)
+a = ds.datetime(dt)
+print(a)
+
+# uasyncio.run(main(display))
 print("stop")
 
 

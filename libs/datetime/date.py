@@ -1,6 +1,5 @@
-from datetime import timedelta
-
-from datetime.dt import _date, _tmod, _dbm, _d2iso, _o2ymd
+from libs.datetime.timedelta import timedelta
+from libs.datetime.dt import _date, _tmod, _dbm, _d2iso, _o2ymd, _iso2d
 
 
 class date:

@@ -1,6 +1,6 @@
-from datetime import timedelta
+from libs.datetime.timedelta import timedelta
 
-from datetime.dt import _time, _iso2t, _t2iso
+from libs.datetime.dt import _time, _iso2t, _t2iso
 
 
 class time:
