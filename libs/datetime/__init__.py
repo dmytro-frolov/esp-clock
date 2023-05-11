@@ -2,7 +2,3 @@
 # esp8266 cannot allocate a single file
 # this module might be buggy
 __version__ = "2.0.0"
-
-from .datetime import datetime
-from .timezone import timezone
-from .timedelta import timedelta
