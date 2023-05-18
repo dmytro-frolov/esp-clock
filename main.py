@@ -1,29 +1,34 @@
-import uasyncio
+# from libs.datetime import datetime
+# from libs.datetime import timezone
+# from libs.datetime import timedelta
 
+
+#
+import uasyncio
 
 from time_handler import TimeHandler
 from display import Display
 
-modules_to_install = []
+
+def do_connect():
+    import network
+
+    wlan = network.WLAN(network.STA_IF)
+    wlan.active(True)
+    if not wlan.isconnected():
+        print('connecting to network...')
+        wlan.connect("()", "")  # connect to an AP
+        while not wlan.isconnected():
+            pass
+    print('network config:', wlan.ifconfig())
+
+    return wlan.isconnected()
 
 
-
-# EPOCH_FIX = 946677600
-
-# try:
-#     from datetime import datetime
-# except ImportError:
-#     modules_to_install.append(("datetime",
-#                               "https://raw.githubusercontent.com/micropython/micropython-lib/master/python-stdlib/datetime/datetime.py"))
-#
-
-
-async def connect(t, d):
+async def connect(time_handler):
     if do_connect():
-        d.set("1337")
-        # await uasyncio.sleep(6)
-        # t.get_from_interwebs()
-        # t.set()
+        time_handler.sync()
+        time_handler.set()
 
 
 class Mode:
@@ -54,26 +59,10 @@ class Mode:
                 buf *= 10
                 await uasyncio.sleep_ms(500)
 
-
     async def listen(self):
         while True:
             pass
             # going to listen for input
-
-
-def do_connect():
-    import network
-
-    wlan = network.WLAN(network.STA_IF)
-    wlan.active(True)
-    if not wlan.isconnected():
-        print('connecting to network...')
-        wlan.connect("()", "")  # connect to an AP
-        while not wlan.isconnected():
-            pass
-    print('network config:', wlan.ifconfig())
-
-    return wlan.isconnected()
 
 
 async def tick(display, t):
@@ -86,15 +75,10 @@ async def tick(display, t):
 
 async def main():
     display = Display()
-    t = TimeHandler()
+    time_handler = TimeHandler()
 
-    # await connect(t, display)
-    # uasyncio.create_task(connect(t, display))
-
-    # task = uasyncio.create_task(tick(display, t))
-    # m = Mode(display, task)
-
-    await uasyncio.gather(display.loop(), tick(display, t))
+    uasyncio.create_task(connect(time_handler))
+    await uasyncio.gather(display.loop(), tick(display, time_handler))
 
     # await uasyncio.gather(display.loop(), m.set(1))#, tick(display, t))
 

@@ -8,12 +8,10 @@ from libs import DS3231
 
 # todo: use timedelta for this
 # some embedded ports use epoch of 2000-01-01 00:00:00 UTC
-# if time.gmtime(0)[0] == 2000:
-#     EPOCH_FIX = 946684800 # check
-# else:
-#     EPOCH_FIX = 0
-
-EPOCH_FIX = 946684800 # check
+if datetime._tmod.gmtime(0)[0] == 2000:
+    EPOCH_FIX = 946684800 # check
+else:
+    EPOCH_FIX = 0
 
 
 class TimeHandler:
@@ -22,20 +20,21 @@ class TimeHandler:
     def _get_from_worldtimeapi(self):
         import urequests
 
-        try:
-            resp = urequests.get("http://worldtimeapi.org/api/ip")
-            if resp.status_code == 200:
-                resp = resp.json()
-                self.unixtime = resp["unixtime"]
-                # todo: offset with minutes
-                self.offset = int(resp["utc_offset"].split(':')[0])
+        resp = urequests.get("http://worldtimeapi.org/api/ip")
+        if resp.status_code == 200:
+            resp = resp.json()
+            # todo: offset with minutes
+            self.offset = int(resp["utc_offset"].split(':')[0])
+            self.unixtime = resp["unixtime"]
 
-        except Exception:
-            return False
+        else:
+            raise Exception(f"Status code: {resp.status_code}")
 
     def _get_from_std_lib(self):
         import ntptime
-        return ntptime.settime()
+
+        self.offset = 0
+        self.unixtime = ntptime.settime()
 
     def __init__(self):
         # scl  d2 4
@@ -43,14 +42,18 @@ class TimeHandler:
         i2c = I2C(sda=Pin(0), scl=Pin(4))
         self.ds = DS3231(i2c)
 
-    def get_from_interwebs(self):
-        self._get_from_worldtimeapi()
+    def sync(self):
+        try:
+            self._get_from_worldtimeapi()
+        except Exception:
+            self._get_from_std_lib()
+        else:
+            self.unixtime -= EPOCH_FIX
 
         delta = timedelta.timedelta(hours=self.offset)
         self.tz = timezone.timezone(delta)
-        epoch = self.unixtime - EPOCH_FIX
 
-        self.datetime = datetime.datetime.fromtimestamp(epoch, self.tz)
+        self.datetime = datetime.datetime.fromtimestamp(self.unixtime, self.tz)
 
     def set(self):
         return self.ds.datetime(
