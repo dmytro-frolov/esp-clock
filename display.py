@@ -102,3 +102,7 @@ class Display:
                 self.set(buf)
                 buf *= 10
                 await uasyncio.sleep_ms(500)
+
+
+display = Display()
+

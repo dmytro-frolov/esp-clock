@@ -70,3 +70,5 @@ class TimeHandler:
         dt = self.ds.datetime()
         return "{:02}{:02}".format(dt[4], dt[5])
 
+
+time_handler = TimeHandler()
