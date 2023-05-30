@@ -48,7 +48,8 @@ class Display:
 
     def __init__(self) -> None:
         self.spi = SPI(1, 10000000)
-        self.rclk = Pin(5, Pin.OUT)
+        # self.rclk = Pin(5, Pin.OUT)
+        self.rclk = Pin(12, Pin.OUT) # doesnt work
 
         self.digits = [Digit(0), Digit(0), Digit(0), Digit(0)]
 

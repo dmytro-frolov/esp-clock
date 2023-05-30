@@ -3,7 +3,7 @@ from machine import Pin, I2C
 from libs.datetime import datetime
 from libs.datetime import timezone
 from libs.datetime import timedelta
-from libs import DS3231
+from libs.ds3231 import DS3231
 
 
 # todo: use timedelta for this
@@ -37,10 +37,13 @@ class TimeHandler:
         self.unixtime = ntptime.settime()
 
     def __init__(self):
-        # scl  d2 4
+        # scl  d2 4 -> d4 2
         # sda  d3 0
-        i2c = I2C(sda=Pin(0), scl=Pin(4))
+        i2c = I2C(sda=Pin(0), scl=Pin(2))
         self.ds = DS3231(i2c)
+
+        delta = timedelta.timedelta(hours=0)
+        self.tz = timezone.timezone(delta)
 
     def sync(self):
         try:
@@ -62,9 +65,12 @@ class TimeHandler:
              self.datetime.weekday())
         )
 
-    def get(self):
+    def get(self): # rename to now()
         # todo: return with timezone. does not work properly
-        return datetime.datetime(*self.ds.datetime())
+        buf_dt = list(self.ds.datetime())
+        del buf_dt[3]
+        # buf_dt[7] = self.tz
+        return datetime.datetime(*buf_dt, tzinfo=self.tz)
 
     def get_time(self) -> str:
         dt = self.ds.datetime()

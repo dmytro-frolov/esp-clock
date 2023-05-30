@@ -90,7 +90,7 @@ class datetime:
         return datetime(0, 0, d, 0, 0, 0, us, self._tz)
 
     def __sub__(self, other):
-        from datetime import timedelta
+        from libs.datetime.timedelta import timedelta
 
         if isinstance(other, timedelta):
             return self.__add__(-other)
