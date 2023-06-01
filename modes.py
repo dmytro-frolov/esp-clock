@@ -28,7 +28,7 @@ class Mode:
     current_mode: tuple[int, "Modes"]
 
     def __init__(self):
-        self.modes = [Clock(), Leet(), Bond(), StopWatch()]
+        self.modes = [Clock(), Date(), StopWatch(), HourStopWatch()]
         self.current_mode = (0, self.modes[0])
         self.rotary = RotaryIRQ(
             pin_num_clk=5,  # 10
@@ -73,18 +73,22 @@ class Mode:
 class Modes:
     tasks = None
 
+    def __init__(self):
+        self.tasks = []
+
     def run(self):
         raise NotImplementedError()
 
     def exit(self):
-        if self.tasks:
-            self.tasks.cancel()
+        # if self.tasks:
+        for task in self.tasks:
+            task.cancel()
 
 
 class Clock(Modes):
     async def run(self):
         display.set(self._get_time())
-        self.tasks = uasyncio.create_task(self.tick())
+        self.tasks.append(uasyncio.create_task(self.tick()))
 
     def exit(self):
         super().exit()
@@ -99,33 +103,30 @@ class Clock(Modes):
             display.set(self._get_time())
             display.digits[1].toggle_dot()
 
-            # await uasyncio.sleep(1)
-            await uasyncio.sleep_ms(40)
+            await uasyncio.sleep(1)
 
 
 class StopWatch(Clock):
+    time_format = "{3}{4}{6}{7}"  # mmss
+
     def __init__(self):
+        super().__init__()
         self.start_time = time_handler.get()
 
     def _get_time(self):
-        # todo: fix here
         time_delta = time_handler.get() - self.start_time
-        # return "{3}{4}{6}{7}".format(*time_delta.isoformat())  # mmss
-        return "{0}{1}{3}{4}".format(*time_delta.isoformat())  # hhmm
+        return self.time_format.format(*time_delta.isoformat())
 
 
-class Leet(Modes):
-    async def run(self):
-        display.set("1337")
-
-
-class Bond(Modes):
-    async def run(self):
-        display.set("0007")
+class HourStopWatch(StopWatch):
+    time_format = "{0}{1}{3}{4}"  # hhmm
 
 
 class Date(Modes):
-    pass
+    async def run(self):
+        dt = time_handler.get()
+        display.digits[1].dot = True
+        display.set("{:02}{:02}".format(dt.day, dt.month))
 
 
 mode = Mode()

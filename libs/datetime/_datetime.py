@@ -1,6 +1,7 @@
 
 from libs.datetime.dt import _date, _time, _iso2d, _tmod, _o2ymd, _iso2t, _d2iso, _t2iso
 from libs.datetime.timezone import timezone
+from libs.datetime.timedelta import timedelta
 
 
 class datetime:
@@ -90,8 +91,6 @@ class datetime:
         return datetime(0, 0, d, 0, 0, 0, us, self._tz)
 
     def __sub__(self, other):
-        from libs.datetime.timedelta import timedelta
-
         if isinstance(other, timedelta):
             return self.__add__(-other)
         elif isinstance(other, datetime):
