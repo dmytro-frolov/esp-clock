@@ -4,6 +4,7 @@ from libs.rotary_irq import RotaryIRQ
 
 from display import display
 from time_handler import time_handler
+from buttons import button
 
 
 def do_connect():
@@ -87,20 +88,16 @@ class Modes:
 
 class Clock(Modes):
     async def run(self):
-        display.set(self._get_time())
         self.tasks.append(uasyncio.create_task(self.tick()))
 
     def exit(self):
         super().exit()
         display.clear()
 
-    def _get_time(self):
-        dt = time_handler.get()
-        return "{:02}{:02}".format(dt.hour, dt.minute)
-
     async def tick(self):
         while True:
-            display.set(self._get_time())
+            dt = time_handler.get()
+            display.set("{:02}{:02}".format(dt.hour, dt.minute))
             display.digits[1].toggle_dot()
 
             await uasyncio.sleep(1)
@@ -111,11 +108,37 @@ class StopWatch(Clock):
 
     def __init__(self):
         super().__init__()
-        self.start_time = time_handler.get()
+        now = time_handler.get()
+        none_delta = now - now
 
-    def _get_time(self):
-        time_delta = time_handler.get() - self.start_time
-        return self.time_format.format(*time_delta.isoformat())
+        self.start_time = now
+        self.time_delta = none_delta
+        self.skipped_time = none_delta
+        self.pause = False
+
+    async def run(self):
+        await super().run()
+        self.tasks.append(uasyncio.create_task(self.get_pause()))
+
+    async def tick(self):
+        while True:
+            if self.pause:
+                display.digits[1].dot = True
+                self.skipped_time = time_handler.get() - self.start_time - self.time_delta
+
+            else:
+                self.time_delta = time_handler.get() - self.start_time - self.skipped_time
+                display.digits[1].toggle_dot()
+
+            display.set(self.time_format.format(*self.time_delta.isoformat()))
+            await uasyncio.sleep(1)
+
+    async def get_pause(self):
+        while True:
+            if not button.value():
+                self.pause = not self.pause
+
+            await uasyncio.sleep_ms(1)
 
 
 class HourStopWatch(StopWatch):
