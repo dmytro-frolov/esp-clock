@@ -9,4 +9,4 @@ async def main():
     await uasyncio.gather(display.loop(), mode.listen())
 
 
-# uasyncio.run(main())
+uasyncio.run(main())
