@@ -48,8 +48,7 @@ class Display:
 
     def __init__(self) -> None:
         self.spi = SPI(1, 10000000)
-        # self.rclk = Pin(5, Pin.OUT)
-        self.rclk = Pin(12, Pin.OUT) # doesnt work
+        self.rclk = Pin(16, Pin.OUT)
 
         self.digits = [Digit(0), Digit(0), Digit(0), Digit(0)]
 
@@ -89,21 +88,4 @@ class Display:
 
                 await uasyncio.sleep_ms(1)
 
-    async def animation(self, n, left_to_right=True):
-        # this is stupid, i don't have time for this
-        if left_to_right:
-            buf = n * 1000
-            for _ in self.digits:
-                self.set(buf)
-                buf /= 10
-                await uasyncio.sleep_ms(500)
-        else:
-            buf = n
-            for _ in self.digits:
-                self.set(buf)
-                buf *= 10
-                await uasyncio.sleep_ms(500)
-
-
 display = Display()
-

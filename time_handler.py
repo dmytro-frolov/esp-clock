@@ -37,8 +37,6 @@ class TimeHandler:
         self.unixtime = ntptime.settime()
 
     def __init__(self):
-        # scl  d2 4 -> d4 2
-        # sda  d3 0
         i2c = I2C(sda=Pin(0), scl=Pin(2))
         self.ds = DS3231(i2c)
 
