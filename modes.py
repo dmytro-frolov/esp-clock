@@ -5,7 +5,7 @@ from libs.rotary_irq import RotaryIRQ
 from display import display
 from time_handler import time_handler
 from buttons import button
-from beeper import beep
+from beeper import beep, beeper
 
 
 def do_connect():
@@ -138,8 +138,7 @@ class StopWatch(Clock):
         while True:
             if not button.value():
                 self.pause = not self.pause
-                beep()
-                await uasyncio.sleep(1)
+                await beep()
 
             await uasyncio.sleep_ms(1)
 
