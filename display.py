@@ -4,27 +4,27 @@ from machine import Pin, SPI
 
 
 class Digit:
-    digits: list
+    digits: dict
 
     dot = False
-    empty = False
-    number = 0
+    number = " "
 
     def __init__(self, y):
-        self.digits = [
-            0b11000000,
-            0b11111001,
-            0b10100100,
-            0b10110000,
-            0b10011001,
-            0b10010010,
-            0b10000010,
-            0b11111000,
-            0b10000000,
-            0b10010000,
-        ]
+        self.digits = {
+            " ": 0b11111111,
+            "0": 0b11000000,
+            "1": 0b11111001,
+            "2": 0b10100100,
+            "3": 0b10110000,
+            "4": 0b10011001,
+            "5": 0b10010010,
+            "6": 0b10000010,
+            "7": 0b11111000,
+            "8": 0b10000000,
+            "9": 0b10010000,
+        }
 
-        self.set(y)
+        self.set(str(y))
 
     def set(self, y):
         self.number = y
@@ -33,9 +33,6 @@ class Digit:
     def get(self):
         if self.dot:
             return self.digits[self.number] - 0b10000000
-        if self.empty:
-            # todo: empty
-            return self.digits[self.number]
 
         return self.digits[self.number]
 
@@ -52,17 +49,12 @@ class Display:
 
         self.digits = [Digit(0), Digit(0), Digit(0), Digit(0)]
 
-    def set(self, numbs: int | str):
-        # this whole set and get is stupid, but it's mvp
-        if isinstance(numbs, str):
-            assert numbs.isdigit()
+    def set(self, numbs: str):
+        if len(numbs) != len(self.digits):
+            numbs = " " * len(self.digits)
 
-        if int(numbs) > 9999:
-            self.set(0)
-
-        numbs = "{:04}".format(int(numbs))
         for n, d in zip(numbs, self.digits):
-            d.set(int(n))
+            d.set(n)
 
     def get(self) -> str:
         return "".join([str(d.number) for d in self.digits])

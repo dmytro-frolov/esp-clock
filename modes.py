@@ -53,9 +53,11 @@ class Mode:
 
     async def animation(self, n):
         self.current_mode[1].exit()
+        display.clear()
+
         buf = n * 1000
         for _ in display.digits:
-            display.set(buf)
+            display.set("{:4}".format(buf).replace("0", " "))
             buf /= 10
             await uasyncio.sleep_ms(180)
 
@@ -82,7 +84,6 @@ class Modes:
         raise NotImplementedError()
 
     def exit(self):
-        # if self.tasks:
         for task in self.tasks:
             task.cancel()
 

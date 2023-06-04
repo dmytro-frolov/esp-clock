@@ -67,7 +67,6 @@ class TimeHandler:
         # todo: return with timezone. does not work properly
         buf_dt = list(self.ds.datetime())
         del buf_dt[3]
-        # buf_dt[7] = self.tz
         return datetime.datetime(*buf_dt, tzinfo=self.tz)
 
     def get_time(self) -> str:
