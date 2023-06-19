@@ -25,16 +25,17 @@ class TimeHandler:
             resp = resp.json()
             # todo: offset with minutes
             self.offset = int(resp["utc_offset"].split(':')[0])
-            self.unixtime = resp["unixtime"]
-
+            self.unixtime = resp["unixtime"] - EPOCH_FIX
         else:
             raise Exception(f"Status code: {resp.status_code}")
 
     def _get_from_std_lib(self):
         import ntptime
 
-        self.offset = 0
-        self.unixtime = ntptime.settime()
+        self.offset = 3
+        ntptime.settime()
+
+        self.unixtime = ntptime.time() + EPOCH_FIX
 
     def __init__(self):
         i2c = I2C(sda=Pin(0), scl=Pin(2))
@@ -44,12 +45,7 @@ class TimeHandler:
         self.tz = timezone.timezone(delta)
 
     def sync(self):
-        try:
-            self._get_from_worldtimeapi()
-        except Exception:
-            self._get_from_std_lib()
-        else:
-            self.unixtime -= EPOCH_FIX
+        self._get_from_std_lib()
 
         delta = timedelta.timedelta(hours=self.offset)
         self.tz = timezone.timezone(delta)
