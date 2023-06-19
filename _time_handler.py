@@ -35,7 +35,7 @@ class TimeHandler:
         self.offset = 3
         ntptime.settime()
 
-        self.unixtime = ntptime.time() + EPOCH_FIX
+        self.unixtime = ntptime.time()
 
     def __init__(self):
         i2c = I2C(sda=Pin(0), scl=Pin(2))
