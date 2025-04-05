@@ -32,9 +32,11 @@ class TimeHandler:
     def _get_from_std_lib(self):
         import ntptime
 
-        self.offset = 3
-        ntptime.settime()
+        self.offset = 2
 
+        ntptime.settime()
+        # no kwargs in this function
+        #  ntptime.settime(timezone=8, server = 'ntp.ntsc.ac.cn')
         self.unixtime = ntptime.time()
 
     def __init__(self):

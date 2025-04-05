@@ -4,14 +4,10 @@ from libs.rotary_irq import RotaryIRQ
 
 from display import display
 from time_handler import time_handler
-from buttons import button
-from beeper import beep, beeper
 
 
 def do_connect():
     import network
-
-    # wlan.config(dhcp_hostname="foo-bar-baz")
 
     wlan = network.WLAN(network.STA_IF)
     wlan.active(True)
@@ -120,7 +116,6 @@ class StopWatch(Clock):
 
     async def run(self):
         await super().run()
-        self.tasks.append(uasyncio.create_task(self.get_pause()))
 
     async def tick(self):
         while True:
@@ -134,14 +129,6 @@ class StopWatch(Clock):
 
             display.set(self.time_format.format(*self.time_delta.isoformat()))
             await uasyncio.sleep(1)
-
-    async def get_pause(self):
-        while True:
-            if not button.value():
-                self.pause = not self.pause
-                await beep()
-
-            await uasyncio.sleep_ms(1)
 
 
 class HourStopWatch(StopWatch):

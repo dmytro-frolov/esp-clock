@@ -16,4 +16,12 @@ Based on [micropython](https://micropython.org/download/): \
 In order to improve memory consumption use `mpy_cross` example: ```python -m mpy_cross _datetime.py -o datetime.mpy```
 
 ## Flash
-In this project I used MicroPython pycharm plugin, I think it's based on this [tool](https://github.com/JetBrains/intellij-micropython/blob/master/scripts/microupload.py). Just upload everyfile in the folder to your board.
+ampy configuration can be found at `.ampy`
+```
+sudo ampy ls
+sudo ampy put file
+sudo ampy rm
+sudo ampy reset
+restart
+```
+
