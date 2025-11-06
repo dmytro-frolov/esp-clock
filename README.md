@@ -17,6 +17,7 @@ In order to improve memory consumption use `mpy_cross` example: ```python -m mpy
 
 ## Flash
 ampy configuration can be found at `.ampy`
+No need for pressing buttons, will detect in MacOS if proper cable is used
 ```
 sudo ampy ls
 sudo ampy put file

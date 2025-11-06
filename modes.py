@@ -8,14 +8,21 @@ from time_handler import time_handler
 
 def do_connect():
     import network
+    import time
 
     wlan = network.WLAN(network.STA_IF)
     wlan.active(True)
     if not wlan.isconnected():
         print('connecting to network...')
-        wlan.connect("()", "")  # connect to an AP
-        while not wlan.isconnected():
-            pass
+        wlan.connect("", "")  # connect to an AP
+        for i in range(10):
+            if wlan.isconnected():
+                break
+            print("Still connecting", "."*i)
+            time.sleep(1)
+        else:
+            return False
+
     print('network config:', wlan.ifconfig())
 
     return wlan.isconnected()

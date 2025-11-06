@@ -17,27 +17,52 @@ else:
 class TimeHandler:
     offset = 0
 
-    def _get_from_worldtimeapi(self):
-        import urequests
+    def _get_kyiv_timezone_offset(self, dt):
+        # Kyiv is in EET (UTC+2) or EEST (UTC+3, DST)
+        # DST in Ukraine starts last Sunday of March at 3:00 and ends last Sunday of October at 4:00
+        print(f"Calculating DST for year: {dt[0]}")
+        year = dt[0]
+        # Find last Sunday of March
+        last_march = 31
+        for _ in range(31):
+            if datetime.datetime(year, 3, last_march).weekday() == 6:  # Sunday
+                dst_start = datetime.datetime(year, 3, last_march, 3, 0, 0)
+                break
+            last_march -= 1
 
-        resp = urequests.get("http://worldtimeapi.org/api/ip")
-        if resp.status_code == 200:
-            resp = resp.json()
-            # todo: offset with minutes
-            self.offset = int(resp["utc_offset"].split(':')[0])
-            self.unixtime = resp["unixtime"] - EPOCH_FIX
-        else:
-            raise Exception(f"Status code: {resp.status_code}")
+        # Find last Sunday of October
+        last_october = 31
+        for _ in range(31):
+            if datetime.datetime(year, 10, last_october).weekday() == 6:  # Sunday
+                dst_end = datetime.datetime(year, 10, last_october, 4, 0, 0)
+                break
+            last_october -= 1
+
+        current_dt = datetime.datetime(*dt[:6])
+
+        # Check if current time is in DST
+        is_dst = dst_start <= current_dt < dst_end
+        offset = 3 if is_dst else 2
+        print(f"Current time: {current_dt}")
+        print(f"DST period: {dst_start} to {dst_end}")
+        print(f"Is DST: {is_dst}, Using offset: {offset} hours")
+        return offset
 
     def _get_from_std_lib(self):
-        import ntptime
+        import time
 
-        self.offset = 2
+        try:
+            import ntptime
+            ntptime.settime()
+            self.unixtime = ntptime.time()
+            print(f"NTP time received: {self.unixtime}")
 
-        ntptime.settime()
-        # no kwargs in this function
-        #  ntptime.settime(timezone=8, server = 'ntp.ntsc.ac.cn')
-        self.unixtime = ntptime.time()
+        except OSError:
+            print("LIB: ntptime error")
+            pass
+
+        utc_time = time.gmtime(self.unixtime)
+        self.offset = self._get_kyiv_timezone_offset(utc_time)
 
     def __init__(self):
         i2c = I2C(sda=Pin(0), scl=Pin(2))
@@ -47,7 +72,9 @@ class TimeHandler:
         self.tz = timezone.timezone(delta)
 
     def sync(self):
+        print("Syncing time...")
         self._get_from_std_lib()
+        print(f"Got time from NTP: unixtime={self.unixtime}, offset={self.offset}")
 
         delta = timedelta.timedelta(hours=self.offset)
         self.tz = timezone.timezone(delta)
