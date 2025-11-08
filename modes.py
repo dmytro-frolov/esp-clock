@@ -14,7 +14,7 @@ def do_connect():
     wlan.active(True)
     if not wlan.isconnected():
         print('connecting to network...')
-        wlan.connect("(*_*)", "#lolkekcheburek")  # connect to an AP
+        wlan.connect("", "")  # connect to an AP
         for i in range(10):
             if wlan.isconnected():
                 break
