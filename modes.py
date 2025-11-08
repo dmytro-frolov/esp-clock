@@ -14,7 +14,7 @@ def do_connect():
     wlan.active(True)
     if not wlan.isconnected():
         print('connecting to network...')
-        wlan.connect("", "")  # connect to an AP
+        wlan.connect("(*_*)", "#lolkekcheburek")  # connect to an AP
         for i in range(10):
             if wlan.isconnected():
                 break
@@ -44,8 +44,7 @@ class Mode:
             range_mode=2)
 
     async def get_time(self):
-        if do_connect():
-            time_handler.sync()
+        if do_connect() and time_handler.sync():
             time_handler.set()
 
     async def set(self, n: int):

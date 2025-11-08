@@ -59,10 +59,11 @@ class TimeHandler:
 
         except OSError:
             print("LIB: ntptime error")
-            pass
+            return False
 
         utc_time = time.gmtime(self.unixtime)
         self.offset = self._get_kyiv_timezone_offset(utc_time)
+        return True
 
     def __init__(self):
         i2c = I2C(sda=Pin(0), scl=Pin(2))
@@ -73,7 +74,9 @@ class TimeHandler:
 
     def sync(self):
         print("Syncing time...")
-        self._get_from_std_lib()
+        if not self._get_from_std_lib():
+            return
+
         print(f"Got time from NTP: unixtime={self.unixtime}, offset={self.offset}")
 
         delta = timedelta.timedelta(hours=self.offset)
