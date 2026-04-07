@@ -6,54 +6,42 @@ from libs.datetime import timedelta
 from libs.ds3231 import DS3231
 
 
-# todo: use timedelta for this
-# some embedded ports use epoch of 2000-01-01 00:00:00 UTC
-if datetime._tmod.gmtime(0)[0] == 2000:
-    EPOCH_FIX = 946684800 # check
-else:
-    EPOCH_FIX = 0
-
-
 class TimeHandler:
     offset = 0
 
-    def _get_kyiv_timezone_offset(self, dt):
-        # Kyiv is in EET (UTC+2) or EEST (UTC+3, DST)
-        # DST in Ukraine starts last Sunday of March at 3:00 and ends last Sunday of October at 4:00
-        print(f"Calculating DST for year: {dt[0]}")
-        year = dt[0]
-        # Find last Sunday of March
-        last_march = 31
-        for _ in range(31):
-            if datetime.datetime(year, 3, last_march).weekday() == 6:  # Sunday
-                dst_start = datetime.datetime(year, 3, last_march, 3, 0, 0)
-                break
-            last_march -= 1
+    def _last_sunday(self, year, month):
+        day = 31
+        while day > 24:
+            if datetime.datetime(year, month, day).weekday() == 6:
+                return day
+            day -= 1
 
-        # Find last Sunday of October
-        last_october = 31
-        for _ in range(31):
-            if datetime.datetime(year, 10, last_october).weekday() == 6:  # Sunday
-                dst_end = datetime.datetime(year, 10, last_october, 4, 0, 0)
-                break
-            last_october -= 1
+        raise ValueError("Failed to find last Sunday")
 
-        current_dt = datetime.datetime(*dt[:6])
+    def _get_kyiv_timezone_offset(self, utc_dt):
+        # Europe/Kyiv uses UTC+2 in winter and UTC+3 in summer.
+        # DST starts on the last Sunday of March at 03:00 local standard time,
+        # which is 01:00 UTC. DST ends on the last Sunday of October at
+        # 04:00 local daylight time, which is also 01:00 UTC.
+        year = utc_dt[0]
+        current_utc = datetime.datetime(*utc_dt[:6])
 
-        # Check if current time is in DST
-        is_dst = dst_start <= current_dt < dst_end
+        march_day = self._last_sunday(year, 3)
+        october_day = self._last_sunday(year, 10)
+
+        dst_start_utc = datetime.datetime(year, 3, march_day, 1, 0, 0)
+        dst_end_utc = datetime.datetime(year, 10, october_day, 1, 0, 0)
+
+        is_dst = dst_start_utc <= current_utc < dst_end_utc
         offset = 3 if is_dst else 2
-        print(f"Current time: {current_dt}")
-        print(f"DST period: {dst_start} to {dst_end}")
-        print(f"Is DST: {is_dst}, Using offset: {offset} hours")
+
         return offset
 
-    def _get_from_std_lib(self):
+    def _sync_ntp(self):
         import time
 
         try:
             import ntptime
-            ntptime.settime()
             self.unixtime = ntptime.time()
             print(f"NTP time received: {self.unixtime}")
 
@@ -74,8 +62,8 @@ class TimeHandler:
 
     def sync(self):
         print("Syncing time...")
-        if not self._get_from_std_lib():
-            return
+        if not self._sync_ntp():
+            return False
 
         print(f"Got time from NTP: unixtime={self.unixtime}, offset={self.offset}")
 
@@ -83,6 +71,7 @@ class TimeHandler:
         self.tz = timezone.timezone(delta)
 
         self.datetime = datetime.datetime.fromtimestamp(self.unixtime, self.tz)
+        return True
 
     def set(self):
         return self.ds.datetime(
