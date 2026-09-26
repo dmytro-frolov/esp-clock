@@ -2,6 +2,19 @@
 
 set -e
 
+if [ "$#" -gt 0 ]; then
+    for file in "$@"; do
+        if [ "$file" = ".env" ]; then
+            ampy put .env secrets.py
+        else
+            ampy put "$file"
+        fi
+        sleep 1
+    done
+    ampy reset
+    exit
+fi
+
 mkdir_if_missing() {
     ampy mkdir "$1" 2>/dev/null || true
     sleep 1
@@ -27,6 +40,11 @@ sleep 1
 
 ampy put beeper.py
 sleep 1
+
+if [ -f .env ]; then
+    ampy put .env secrets.py
+    sleep 1
+fi
 
 mkdir_if_missing libs
 

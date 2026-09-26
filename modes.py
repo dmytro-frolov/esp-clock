@@ -5,6 +5,12 @@ from libs.rotary_irq import RotaryIRQ
 from display import display
 from time_handler import time_handler
 
+try:
+    from secrets import WIFI_PASSWORD, WIFI_SSID
+except ImportError:
+    WIFI_SSID = ""
+    WIFI_PASSWORD = ""
+
 
 def do_connect():
     import network
@@ -14,7 +20,7 @@ def do_connect():
     wlan.active(True)
     if not wlan.isconnected():
         print('connecting to network...')
-        wlan.connect("", "")  # connect to an AP
+        wlan.connect(WIFI_SSID, WIFI_PASSWORD)
         for i in range(10):
             if wlan.isconnected():
                 break
@@ -60,7 +66,7 @@ class Mode:
         buf = n * 1000
         for _ in display.digits:
             display.set("{:4}".format(buf).replace("0", " "))
-            buf /= 10
+            buf //= 10
             await uasyncio.sleep_ms(180)
 
     async def listen(self):
@@ -88,6 +94,7 @@ class Modes:
     def exit(self):
         for task in self.tasks:
             task.cancel()
+        self.tasks.clear()
 
 
 class Clock(Modes):
