@@ -2,20 +2,31 @@ import asyncio
 import datetime as stdlib_datetime
 import importlib
 import sys
+import time as stdlib_time
 import types
 import unittest
 
 
 class Pin:
+    IN = 0
     OUT = 1
+    PULL_UP = 2
 
-    def __init__(self, number, mode=None):
+    def __init__(self, number, mode=None, pull=None):
         self.number = number
         self.mode = mode
+        self.pull = pull
+        self.state = 1 if mode == self.IN else 0
         self.values = []
 
-    def __call__(self, value):
+    def __call__(self, value=None):
+        if value is None:
+            return self.state
+        self.state = value
         self.values.append(value)
+
+    def value(self):
+        return self.state
 
 
 class SPI:
@@ -87,6 +98,8 @@ sys.modules["libs.rotary_irq"] = rotary_irq
 sys.modules["libs.datetime.datetime"] = stdlib_datetime
 sys.modules["libs.datetime.timedelta"] = stdlib_datetime
 sys.modules["libs.datetime.timezone"] = stdlib_datetime
+stdlib_time.ticks_ms = lambda: 0
+stdlib_time.ticks_diff = lambda current, previous: current - previous
 
 display_module = importlib.import_module("display")
 time_module = importlib.import_module("time_handler")
@@ -170,12 +183,11 @@ class ModeTests(unittest.TestCase):
 
         self.assertEqual(wlan.credentials, ("test-network", "test-password"))
 
-    def test_encoder_values_map_to_four_modes(self):
+    def test_encoder_values_map_to_three_modes(self):
         controller = modes_module.Mode()
 
         self.assertEqual([type(mode) for mode in controller.modes], [
             modes_module.Clock,
-            modes_module.Date,
             modes_module.StopWatch,
             modes_module.HourStopWatch,
         ])
@@ -183,10 +195,15 @@ class ModeTests(unittest.TestCase):
             "pin_num_clk": 5,
             "pin_num_dt": 4,
             "min_val": 1,
-            "max_val": 4,
+            "max_val": 3,
             "reverse": True,
             "range_mode": 2,
         })
+        self.assertEqual(controller.button.number, 12)
+        self.assertEqual(controller.button.mode, Pin.IN)
+        self.assertEqual(controller.button.pull, Pin.PULL_UP)
+        self.assertIs(controller.modes[1].state, controller.stopwatch)
+        self.assertIs(controller.modes[2].state, controller.stopwatch)
 
     def test_animation_moves_selected_mode_across_display(self):
         controller = modes_module.Mode()
@@ -205,7 +222,7 @@ class ModeTests(unittest.TestCase):
             pass
 
         class Rotary:
-            values = iter((1, 4))
+            values = iter((1, 3))
 
             def value(self):
                 return next(self.values)
@@ -233,7 +250,7 @@ class ModeTests(unittest.TestCase):
         finally:
             modes_module.uasyncio.sleep_ms = original_sleep_ms
 
-        self.assertEqual(calls, [("animation", 4), ("set", 3)])
+        self.assertEqual(calls, [("animation", 3), ("set", 2)])
 
     def test_exit_cancels_and_forgets_tasks(self):
         mode = modes_module.Modes()
@@ -245,68 +262,126 @@ class ModeTests(unittest.TestCase):
         self.assertTrue(all(task.cancelled for task in tasks))
         self.assertEqual(mode.tasks, [])
 
-    def test_switching_away_cancels_running_mode(self):
+    def test_switching_between_stopwatch_views_keeps_running(self):
         controller = modes_module.Mode()
-        asyncio.run(controller.set(2))
+        asyncio.run(controller.set(1))
         stopwatch = controller.current_mode[1]
         task = stopwatch.tasks[0]
 
-        asyncio.run(controller.set(3))
+        asyncio.run(controller.set(2))
 
         self.assertTrue(task.cancelled)
         self.assertEqual(stopwatch.tasks, [])
         self.assertIsInstance(controller.current_mode[1], modes_module.HourStopWatch)
+        self.assertFalse(controller.stopwatch.paused)
 
-    def test_stopwatch_starts_when_mode_is_selected(self):
-        stopwatch = modes_module.StopWatch()
-        selected_at = stdlib_datetime.datetime(2024, 6, 7, 9, 10, 11,
-                                                tzinfo=stdlib_datetime.timezone.utc)
-        original_get = modes_module.time_handler.get
-        modes_module.time_handler.get = lambda: selected_at
+    def test_switching_to_clock_pauses_stopwatch(self):
+        now = [0]
+        original_ticks_ms = modes_module.time.ticks_ms
+        modes_module.time.ticks_ms = lambda: now[0]
         try:
-            asyncio.run(stopwatch.run())
+            controller = modes_module.Mode()
+            asyncio.run(controller.set(1))
+            now[0] = 5000
+            asyncio.run(controller.set(0))
+            now[0] = 365 * 24 * 60 * 60 * 1000
         finally:
-            modes_module.time_handler.get = original_get
+            modes_module.time.ticks_ms = original_ticks_ms
 
-        self.assertEqual(stopwatch.start_time, selected_at)
-        self.assertEqual(stopwatch.time_delta.total_seconds(), 0)
-        stopwatch.exit()
+        self.assertTrue(controller.stopwatch.paused)
+        self.assertEqual(controller.stopwatch.seconds(), 5)
+        asyncio.run(controller.set(1))
+        self.assertTrue(controller.stopwatch.paused)
 
-    def test_stopwatch_ticks_only_write_digits(self):
+    def test_button_toggles_pause_with_debounce(self):
+        now = [0]
+        original_ticks_ms = modes_module.time.ticks_ms
+        modes_module.time.ticks_ms = lambda: now[0]
+        try:
+            controller = modes_module.Mode()
+            asyncio.run(controller.set(1))
+
+            now[0] = 1000
+            controller.button.state = 0
+            controller.check_button()
+            self.assertTrue(controller.stopwatch.paused)
+
+            controller.button.state = 1
+            controller.check_button()
+            now[0] = 1100
+            controller.button.state = 0
+            controller.check_button()
+            self.assertTrue(controller.stopwatch.paused)
+
+            controller.button.state = 1
+            controller.check_button()
+            now[0] = 1200
+            controller.button.state = 0
+            controller.check_button()
+            self.assertFalse(controller.stopwatch.paused)
+        finally:
+            modes_module.time.ticks_ms = original_ticks_ms
+
+    def test_button_is_ignored_in_clock_mode(self):
+        controller = modes_module.Mode()
+        controller.button.state = 0
+
+        controller.check_button()
+
+        self.assertFalse(controller.stopwatch.started)
+        self.assertTrue(controller.stopwatch.paused)
+
+    def test_stopwatch_stops_at_maximum(self):
+        now = [0]
+        original_ticks_ms = modes_module.time.ticks_ms
+        modes_module.time.ticks_ms = lambda: now[0]
+        try:
+            state = modes_module.StopWatchState()
+            state.activate()
+            state.elapsed_ms = state.max_ms - 500
+            now[0] = 1000
+
+            seconds = state.seconds()
+        finally:
+            modes_module.time.ticks_ms = original_ticks_ms
+
+        self.assertEqual(seconds, 99 * 3600 + 59 * 60 + 59)
+        self.assertTrue(state.paused)
+
+    def test_stopwatch_formats_share_elapsed_time(self):
+        state = modes_module.StopWatchState()
+        elapsed = 99 * 3600 + 59 * 60 + 59
+
+        self.assertEqual(modes_module.StopWatch(state).format_time(elapsed), "5959")
+        self.assertEqual(modes_module.HourStopWatch(state).format_time(elapsed), "9959")
+
+    def test_paused_stopwatch_keeps_second_dot_on(self):
         class StopTick(Exception):
             pass
 
-        start = stdlib_datetime.datetime(2024, 6, 7, 9, 0,
-                                         tzinfo=stdlib_datetime.timezone.utc)
-        original_get = modes_module.time_handler.get
+        state = modes_module.StopWatchState()
+        state.started = True
+        state.elapsed_ms = 65_000
+        stopwatch = modes_module.StopWatch(state)
+        values = []
         original_set = modes_module.display.set
         original_sleep = modes_module.uasyncio.sleep
 
         async def stop(_):
             raise StopTick
 
+        modes_module.display.digits[1].dot = False
+        modes_module.display.set = values.append
+        modes_module.uasyncio.sleep = stop
         try:
-            modes_module.uasyncio.sleep = stop
-            for mode_class, elapsed, expected in (
-                    (modes_module.StopWatch, 65, "0105"),
-                    (modes_module.HourStopWatch, 3665, "0101")):
-                with self.subTest(mode=mode_class.__name__):
-                    stopwatch = mode_class()
-                    stopwatch.start_time = start
-                    stopwatch.skipped_time = start - start
-                    modes_module.time_handler.get = lambda: start + stdlib_datetime.timedelta(
-                        seconds=elapsed)
-                    values = []
-                    modes_module.display.set = values.append
-
-                    with self.assertRaises(StopTick):
-                        asyncio.run(stopwatch.tick())
-
-                    self.assertEqual(values, [expected])
+            with self.assertRaises(StopTick):
+                asyncio.run(stopwatch.tick())
         finally:
-            modes_module.time_handler.get = original_get
             modes_module.display.set = original_set
             modes_module.uasyncio.sleep = original_sleep
+
+        self.assertEqual(values, ["0105"])
+        self.assertTrue(modes_module.display.digits[1].dot)
 
 
 class TimeHandlerTests(unittest.TestCase):

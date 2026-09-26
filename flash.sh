@@ -2,16 +2,36 @@
 
 set -e
 
+python_bin="${PYTHON:-python}"
+
+./build.sh
+
+upload_file() {
+    case "$1" in
+        .env)
+            ampy put .env secrets.py
+            ;;
+        modes.py|display.py|time_handler.py)
+            remote_mpy="${1%.py}.mpy"
+            ampy rm "$1" 2>/dev/null || true
+            ampy put "build/$remote_mpy" "$remote_mpy"
+            ;;
+        *)
+            ampy put "$1"
+            ;;
+    esac
+    sleep 1
+}
+
+finish() {
+    "$python_bin" tools/smoke_test.py
+}
+
 if [ "$#" -gt 0 ]; then
     for file in "$@"; do
-        if [ "$file" = ".env" ]; then
-            ampy put .env secrets.py
-        else
-            ampy put "$file"
-        fi
-        sleep 1
+        upload_file "$file"
     done
-    ampy reset
+    finish
     exit
 fi
 
@@ -23,27 +43,15 @@ mkdir_if_missing() {
 ampy ls
 sleep 1
 
-ampy put boot.py
-sleep 1
-
-ampy put main.py
-sleep 1
-
-ampy put modes.py
-sleep 1
-
-ampy put display.py
-sleep 1
-
-ampy put time_handler.py
-sleep 1
-
-ampy put beeper.py
-sleep 1
+upload_file boot.py
+upload_file main.py
+upload_file modes.py
+upload_file display.py
+upload_file time_handler.py
+upload_file beeper.py
 
 if [ -f .env ]; then
-    ampy put .env secrets.py
-    sleep 1
+    upload_file .env
 fi
 
 mkdir_if_missing libs
@@ -110,5 +118,4 @@ sleep 1
 ampy put libs/datetime/timezone.mpy libs/datetime/timezone.mpy
 sleep 1
 
-ampy reset
-sleep 1
+finish
