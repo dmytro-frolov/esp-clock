@@ -75,6 +75,7 @@ async def sleep_ms(_):
 
 
 uasyncio.sleep_ms = sleep_ms
+uasyncio.sleep = sleep_ms
 sys.modules["uasyncio"] = uasyncio
 
 ds3231 = types.ModuleType("libs.ds3231")
@@ -255,6 +256,57 @@ class ModeTests(unittest.TestCase):
         self.assertTrue(task.cancelled)
         self.assertEqual(stopwatch.tasks, [])
         self.assertIsInstance(controller.current_mode[1], modes_module.HourStopWatch)
+
+    def test_stopwatch_starts_when_mode_is_selected(self):
+        stopwatch = modes_module.StopWatch()
+        selected_at = stdlib_datetime.datetime(2024, 6, 7, 9, 10, 11,
+                                                tzinfo=stdlib_datetime.timezone.utc)
+        original_get = modes_module.time_handler.get
+        modes_module.time_handler.get = lambda: selected_at
+        try:
+            asyncio.run(stopwatch.run())
+        finally:
+            modes_module.time_handler.get = original_get
+
+        self.assertEqual(stopwatch.start_time, selected_at)
+        self.assertEqual(stopwatch.time_delta.total_seconds(), 0)
+        stopwatch.exit()
+
+    def test_stopwatch_ticks_only_write_digits(self):
+        class StopTick(Exception):
+            pass
+
+        start = stdlib_datetime.datetime(2024, 6, 7, 9, 0,
+                                         tzinfo=stdlib_datetime.timezone.utc)
+        original_get = modes_module.time_handler.get
+        original_set = modes_module.display.set
+        original_sleep = modes_module.uasyncio.sleep
+
+        async def stop(_):
+            raise StopTick
+
+        try:
+            modes_module.uasyncio.sleep = stop
+            for mode_class, elapsed, expected in (
+                    (modes_module.StopWatch, 65, "0105"),
+                    (modes_module.HourStopWatch, 3665, "0101")):
+                with self.subTest(mode=mode_class.__name__):
+                    stopwatch = mode_class()
+                    stopwatch.start_time = start
+                    stopwatch.skipped_time = start - start
+                    modes_module.time_handler.get = lambda: start + stdlib_datetime.timedelta(
+                        seconds=elapsed)
+                    values = []
+                    modes_module.display.set = values.append
+
+                    with self.assertRaises(StopTick):
+                        asyncio.run(stopwatch.tick())
+
+                    self.assertEqual(values, [expected])
+        finally:
+            modes_module.time_handler.get = original_get
+            modes_module.display.set = original_set
+            modes_module.uasyncio.sleep = original_sleep
 
 
 class TimeHandlerTests(unittest.TestCase):

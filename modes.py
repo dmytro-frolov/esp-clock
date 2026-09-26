@@ -115,8 +115,6 @@ class Clock(Modes):
 
 
 class StopWatch(Clock):
-    time_format = "{3}{4}{6}{7}"  # mmss
-
     def __init__(self):
         super().__init__()
         now = time_handler.get()
@@ -128,7 +126,16 @@ class StopWatch(Clock):
         self.pause = False
 
     async def run(self):
+        now = time_handler.get()
+        self.start_time = now
+        self.time_delta = now - now
+        self.skipped_time = self.time_delta
+        self.pause = False
         await super().run()
+
+    def format_time(self):
+        seconds = max(0, int(self.time_delta.total_seconds()))
+        return "{:02}{:02}".format((seconds // 60) % 60, seconds % 60)
 
     async def tick(self):
         while True:
@@ -140,12 +147,15 @@ class StopWatch(Clock):
                 self.time_delta = time_handler.get() - self.start_time - self.skipped_time
                 display.digits[1].toggle_dot()
 
-            display.set(self.time_format.format(*self.time_delta.isoformat()))
+            display.set(self.format_time())
             await uasyncio.sleep(1)
 
 
 class HourStopWatch(StopWatch):
-    time_format = "{0}{1}{3}{4}"  # hhmm
+    def format_time(self):
+        seconds = max(0, int(self.time_delta.total_seconds()))
+        return "{:02}{:02}".format((seconds // 3600) % 100,
+                                    (seconds // 60) % 60)
 
 
 class Date(Modes):
