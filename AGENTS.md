@@ -50,7 +50,7 @@ Do not change pin assignments casually. They are effectively part of the device 
 - Full `erase_flash` is not required for every update. Use it when you need a clean device or when debugging a bad flash state.
 - Run `build.sh` with `mpy-cross` 1.20.0 to compile `modes.py`, `display.py`, and `time_handler.py` before upload.
 - Use [`flash.sh`](/Users/nvxd8c/git/esp-clock/flash.sh) for routine file uploads. Device connection defaults live in [`.ampy`](/Users/nvxd8c/git/esp-clock/.ampy).
-- `flash.sh` uploads compiled application modules, removes their same-named `.py` files, and runs a cold-boot smoke test with a 5 KB minimum free-heap check.
+- `flash.sh` uploads compiled application modules, removes their same-named `.py` files, and runs a cold-boot smoke test with a 2.5 KB minimum steady-state heap check.
 
 Typical commands from the repo documentation:
 

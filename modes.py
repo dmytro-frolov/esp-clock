@@ -17,7 +17,7 @@ from time_handler import time_handler
 gc.collect()
 
 
-def do_connect():
+async def do_connect():
     import network
 
     wlan = network.WLAN(network.STA_IF)
@@ -29,13 +29,14 @@ def do_connect():
             if wlan.isconnected():
                 break
             print("Still connecting", "."*i)
-            time.sleep(1)
+            await uasyncio.sleep(1)
         else:
-            return False
+            wlan.active(False)
+            return None
 
     print('network config:', wlan.ifconfig())
 
-    return wlan.isconnected()
+    return wlan
 
 
 class StopWatchState:
@@ -108,8 +109,11 @@ class Mode:
         self.last_button_press = None
 
     async def get_time(self):
-        if do_connect() and time_handler.sync():
-            time_handler.set()
+        wlan = await do_connect()
+        if wlan:
+            if time_handler.sync():
+                time_handler.set()
+            wlan.active(False)
 
     async def set(self, n: int):
         self._pause_if_leaving(n)
@@ -149,6 +153,8 @@ class Mode:
 
     async def listen(self):
         val_old = self.rotary.value()
+        gc.collect()
+        print("Free heap running:", gc.mem_free())
         while True:
             val_new = self.rotary.value()
             if val_old != val_new:

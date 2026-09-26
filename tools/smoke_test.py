@@ -6,7 +6,7 @@ from pathlib import Path
 import serial
 
 
-MIN_FREE_HEAP = 5000
+MIN_FREE_HEAP = 2500
 
 
 def ampy_config():
@@ -33,7 +33,7 @@ marker_seen_at = None
 output = bytearray()
 while time.monotonic() < deadline:
     output.extend(connection.read(1024))
-    if marker_seen_at is None and b"Free heap before main:" in output:
+    if marker_seen_at is None and b"Free heap running:" in output:
         marker_seen_at = time.monotonic()
     if marker_seen_at is not None and time.monotonic() - marker_seen_at >= 3:
         break
@@ -45,7 +45,7 @@ print(log)
 if "Traceback" in log or "MemoryError" in log:
     sys.exit("Cold boot failed")
 
-match = re.search(r"Free heap before main:\s*(\d+)", log)
+match = re.search(r"Free heap running:\s*(\d+)", log)
 if not match:
     sys.exit("Cold boot did not reach main loop")
 

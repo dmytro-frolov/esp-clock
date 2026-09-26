@@ -1,5 +1,6 @@
 import asyncio
 import datetime as stdlib_datetime
+import gc as stdlib_gc
 import importlib
 import sys
 import time as stdlib_time
@@ -100,6 +101,7 @@ sys.modules["libs.datetime.timedelta"] = stdlib_datetime
 sys.modules["libs.datetime.timezone"] = stdlib_datetime
 stdlib_time.ticks_ms = lambda: 0
 stdlib_time.ticks_diff = lambda current, previous: current - previous
+stdlib_gc.mem_free = lambda: 10_000
 
 display_module = importlib.import_module("display")
 time_module = importlib.import_module("time_handler")
@@ -119,6 +121,11 @@ class DigitTests(unittest.TestCase):
 
         self.assertEqual(digit.set("2"), 0b10100100)
         self.assertEqual(digit.number, "2")
+
+    def test_dash_uses_middle_segment(self):
+        digit = display_module.Digit("-")
+
+        self.assertEqual(digit.get(), 0b10111111)
 
 
 class DisplayTests(unittest.TestCase):
@@ -146,18 +153,24 @@ class DisplayTests(unittest.TestCase):
         self.assertFalse(any(digit.dot for digit in self.display.digits))
 
     def test_latch_pulses_output(self):
+        initial_pulses = len(self.display.rclk.values)
         self.display.latch()
 
-        self.assertEqual(self.display.rclk.values, [1, 0])
+        self.assertEqual(self.display.rclk.values[initial_pulses:], [1, 0])
+
+    def test_initialization_blanks_hardware_and_sets_dashes(self):
+        self.assertEqual(self.display.get(), "----")
+        self.assertEqual(self.display.spi.writes[0], bytes((0b11111111, 0)))
 
 
 class ModeTests(unittest.TestCase):
     def test_connect_uses_wifi_configuration(self):
         class WLAN:
             credentials = None
+            active_values = []
 
-            def active(self, _):
-                pass
+            def active(self, value):
+                self.active_values.append(value)
 
             def isconnected(self):
                 return self.credentials is not None
@@ -177,11 +190,12 @@ class ModeTests(unittest.TestCase):
         modes_module.WIFI_SSID = "test-network"
         modes_module.WIFI_PASSWORD = "test-password"
         try:
-            self.assertTrue(modes_module.do_connect())
+            self.assertIs(asyncio.run(modes_module.do_connect()), wlan)
         finally:
             modes_module.WIFI_SSID, modes_module.WIFI_PASSWORD = credentials
 
         self.assertEqual(wlan.credentials, ("test-network", "test-password"))
+        self.assertEqual(wlan.active_values, [True])
 
     def test_encoder_values_map_to_three_modes(self):
         controller = modes_module.Mode()

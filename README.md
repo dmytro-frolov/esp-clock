@@ -21,6 +21,9 @@ blinks while running and stays on while paused. Switching between stopwatch
 modes preserves the counter; switching to the clock pauses it. The maximum is
 `99:59:59`, displayed as `59:59` in mode 2 and `99:59` in mode 3.
 
+During startup and Wi-Fi/NTP synchronization the display shows `----`.
+Wi-Fi is turned off after synchronization to release RAM and reduce power use.
+
 ## Firmware installation
 This project depends on MicroPython `ESP8266_GENERIC-20230426-v1.20.0.bin`.
 
@@ -106,7 +109,7 @@ The script:
 - creates `libs` directories if needed
 - waits `1` second after each `ampy` command
 - performs a real cold boot over USB-UART
-- fails on `Traceback`, `MemoryError`, or less than 5 KB of free heap
+- fails on `Traceback`, `MemoryError`, or less than 2.5 KB of steady-state heap
 
 To upload only files that changed, pass them as arguments. This does not erase
 the device filesystem or reinstall MicroPython:

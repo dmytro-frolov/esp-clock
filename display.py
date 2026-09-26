@@ -12,6 +12,7 @@ class Digit:
     def __init__(self, y):
         self.digits = {
             " ": 0b11111111,
+            "-": 0b10111111,
             "0": 0b11000000,
             "1": 0b11111001,
             "2": 0b10100100,
@@ -48,6 +49,10 @@ class Display:
         self.rclk = Pin(16, Pin.OUT)
 
         self.digits = [Digit(0), Digit(0), Digit(0), Digit(0)]
+        self.set("----")
+
+        self.spi.write(bytearray((0b11111111, 0)))
+        self.latch()
 
     def set(self, numbs: str):
         if len(numbs) != len(self.digits):
